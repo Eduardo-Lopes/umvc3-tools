@@ -9,45 +9,15 @@ import traceback
 from pymxs import runtime as rt
 from mtlib import *
 import mtmaxconfig
-from mtmaxexp import *
-from mtmaximp import *
 import mtmaxutil
 import mtmaxlog
 import mtmaxver
+from mtmaxexp import *
+from mtmaximp import *
+from mtmaxanim import MtMaxAnimationImportExportRollout
 from mtlib import log
+from mtmaxrollout import MtRollout
 
-def _handleException( e, brief ):
-    mtmaxlog.exception( e )
-    mtmaxutil.showExceptionMessageBox( brief, e )
-    if mtmaxconfig.showLogOnError:
-        mtmaxutil.openLogFile()
-    else:
-        mtmaxutil.openListener()
-
-class MtRollout:
-    @classmethod
-    def onEvent( cls, e, *args ):
-        try:
-            mtmaxlog.debug(f'received event: {e} with args: {args}')
-            if hasattr(cls, e):
-                getattr(cls, e)(*args)
-            else:
-                mtmaxlog.debug(f'no event handler for {e}')
-
-            if hasattr( cls, 'updateVisibility'): 
-                cls.updateVisibility()
-            else:
-                mtmaxlog.debug(f'no update visibility handler defined in {cls}')
-
-            mtmaxconfig.save()
-        except Exception as e:
-            _handleException( e, 'A fatal error occured while processing user input' )
-            
-    @classmethod
-    def getMxsVar( cls ):
-        assert( hasattr( rt, cls.__name__ ) )
-        return getattr( rt, cls.__name__ )
-    
 class MtMaxInfoRollout(MtRollout):
     @staticmethod
     def loadConfig():
@@ -180,7 +150,6 @@ class MtMaxModelImportRollout(MtRollout):
     def chkBakeScaleChanged( state ):
         mtmaxconfig.importBakeScale = state
 
-        
 class MtMaxModelExportRollout(MtRollout):
     @staticmethod
     def updateVisibility():
@@ -471,7 +440,7 @@ def createMainWindow():
         
     # create plugin window
     rt.g_mtWindow = rt.newRolloutFloater( "MT Framework Max IO Plugin", w, h, x, y )
-    rollouts = [MtMaxInfoRollout, MtMaxSettingsRollout, MtMaxModelImportRollout, MtMaxModelExportRollout, MtMaxUtilitiesRollout]
+    rollouts = [MtMaxInfoRollout, MtMaxSettingsRollout, MtMaxModelImportRollout, MtMaxAnimationImportExportRollout, MtMaxModelExportRollout, MtMaxUtilitiesRollout]
     if mtmaxutil.isDebugEnv():
         rollouts.insert(0, MtMaxDebugRollout)
         

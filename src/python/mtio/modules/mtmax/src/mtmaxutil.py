@@ -3,6 +3,7 @@ import sys
 from typing import Iterable
 from pymxs import runtime as rt
 import mtmaxver
+import mtmaxconfig
 
 def getScriptDir():
     return os.path.dirname(os.path.realpath(__file__))
@@ -94,3 +95,13 @@ def toMaxArray( it: Iterable, converter=lambda x: x ):
     for i in it:
         rt.append( arr, converter( i ) )
     return arr
+
+def _handleException( e, brief ):
+    import mtmaxlog
+
+    mtmaxlog.exception( e )
+    showExceptionMessageBox( brief, e )
+    if mtmaxconfig.showLogOnError:
+        openLogFile()
+    else:
+        openListener()

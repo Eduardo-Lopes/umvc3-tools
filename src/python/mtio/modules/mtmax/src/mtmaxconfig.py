@@ -24,6 +24,9 @@ importCreateLayer = True
 importScale = 1
 importBakeScale = True
 
+#animation settings
+animationFilePath = ''
+
 # export settings
 exportWeights = True
 exportFilePath = ''

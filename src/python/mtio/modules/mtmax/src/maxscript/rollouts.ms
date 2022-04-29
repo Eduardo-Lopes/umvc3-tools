@@ -178,6 +178,35 @@ rollout MtMaxModelImportRollout "Model import"
 	on chkBakeScale			changed state	do emit #("chkBakeScale", state)
 )
 
+rollout MtMaxAnimationImportExportRollout "Animation import/export"
+(
+	fn _width = ( MtMaxAnimationImportExportRollout.width )
+	fn _height = ( MtMaxAnimationImportExportRollout.height )
+
+	label lblFile "Animation file" across:1 align:#left
+	edittext edtFile across:2 width:(_width() - 60) offset:[0,0]
+	button btnFile "..." align:#right across:2 offset:[10,-2]
+
+	button btnLoad "Load" align:#center across:1;
+
+	spinner spnAnimationIndex "Animation Index" range:[0,1000000,0] align:#center width: 50 type:#integer;
+
+	button btnImport "Import Animation" align:#center across:1;
+
+	button btnUpdate "Update Animation File" align:#center across:1;
+
+	fn emit args = 
+	(
+		mtCallPythonFunc "MtMaxAnimationImportExportRollout" "onEvent" args
+	)
+
+	on edtFile 				changed state 	do emit #("edtFileChanged", state)
+	on btnFile 				pressed 		do emit #("btnFilePressed")
+	on btnLoad 				pressed 		do emit #("btnLoadPressed")
+	on btnImport			pressed 		do emit #("btnImportPressed")
+	on btnUpdate 			pressed 		do emit #("btnUpdatePressed")
+)
+
 rollout MtMaxModelExportRollout "Model export"
 (
 	fn _width = ( MtMaxModelImportRollout.width )

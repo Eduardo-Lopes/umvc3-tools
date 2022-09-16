@@ -1,4 +1,5 @@
 import functools
+from typing import List, Tuple
 from numpy import little_endian, uint, uint64
 from lmt import Lmt
 import bitstring
@@ -85,8 +86,8 @@ float_format = {
 }
 
 unsigned_format = {
-    "unpack": lambda b: b.uint/((2**len(b))-1),
-    "pack": lambda bitcount, f: bitstring.Bits(uint=uint(f*((2**bitcount)-1)), length=bitcount)
+    "unpack": lambda b: (b.uint-8)/((2**len(b))-16),
+    "pack": lambda bitcount, f: bitstring.Bits(uint=uint(f*((2**bitcount)-16)+8), length=bitcount)
 }
 
 signed_format = {
@@ -158,7 +159,7 @@ Lmt.Track.Compression.bilinearrotationquat4_9bit:
 {"buffer_size": 5, "strides":[0,9,9,9,18,9,27,9], "format":unpack_bytes2, "preprocess": preprocess4_9, "postprocess": id},
 '''
 
-def process(compressor, buffer, extremes):
+def process(compressor, buffer, extremes) -> Tuple[List,int]:
     strides = compressor['strides']
     bit_size = compressor['bit_size']
 
@@ -195,16 +196,79 @@ def process(compressor, buffer, extremes):
     '''
     #### assert ####
 
+    #print(bin_vec, end=' ')
+    #print(result, end=' ')
+
     if not extremes is None:
-        result = np.add(extremes.max, np.multiply(extremes.min,result))
+        result = np.add(extremes.max, np.multiply(extremes.min, result))
+    
+    #print(result)
 
     return result, frames
 
-def process_buffer(codec, buffer, extremes):
-
+def process_buffer(codec, buffer, extremes) -> List[Tuple[List,int]]:
     compressor = constants[codec]
     size = compressor['buffer_size']
-    return [process(compressor,buffer[s:(s+size)],extremes) for s in range(0,len(buffer),size)]
+    if not buffer is None and len(buffer) > 0:
+        return [process(compressor,buffer[s:(s+size)],extremes) for s in range(0,len(buffer),size)]
+    else:
+        return []
+
+def generate(compressor, value, frame, extremes):
+    preprocess = compressor['preprocess']
+    postprocess = compressor['postprocess']
+    strides = compressor['strides']
+    bit_size = compressor['bit_size']
+    frames_process = compressor['frames']
+    format = compressor["format"]
+
+    #print('value', value)
+    unvec = postprocess['pack'](value)
+    temp = bitstring.Bits(length=compressor["buffer_size"]*8)
+    #print('unvec',[b for b in unvec])
+    temp_vec = [format['pack'](bit_size, b) for b in unvec]
+    for s, v in zip(strides,temp_vec):
+        temp = temp | (
+            (bitstring.Bits(length=s)) + v + 
+            (bitstring.Bits(length=len(temp)-s-bit_size)))
+    temp = frames_process['pack'](temp,frame)
+    unc = preprocess['pack'](temp)
+    unc = bitstring.Bits(unc)
+
+    #assert(unc==bitstring.Bits(bytes(buffer)))
+
+    return unc
+
+def generate_buffer(codec, values, frames):
+    #print('codec', codec)
+    compressor = constants[codec]
+
+    extremes = None
+
+    if  codec == Lmt.Track.Compression.bilinearrotationquat4_7bit or \
+        codec == Lmt.Track.Compression.bilinearvector3_8bit or \
+        codec == Lmt.Track.Compression.bilinearvector3_16bit:
+        class Extreme:
+            pass
+        extremes = Extreme()
+        extremes.max = np.min(values, axis = 0)
+        extremes.min = np.max(np.subtract(values, extremes.max), axis = 0)
+        #print('extremes.min',extremes.min)
+        #print('extremes.max',extremes.max)
+        def safe_divide(a,b):
+            if b == 0.0:
+                return a
+            else:
+                return a / b
+        values = [[safe_divide(a,b) for a,b in zip(np.subtract(value,extremes.max),extremes.min)] for value in values]
+        #print(values)
+
+    buffer = list(b''.join([generate(compressor, value, frame, extremes).bytes for value, frame in zip(values,frames)]))
+
+    if len(buffer) == 0:
+        buffer = None
+
+    return buffer, extremes
 
 if __name__ == "__main__":
     '''
